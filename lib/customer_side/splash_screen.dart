@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'greeting_screen.dart';  // The next screen
+import 'package:matracking/customer_side/greeting_screen.dart';  // The next screen
 
 class SplashScreen extends StatefulWidget {
   @override

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'passenger_auth_screen.dart'; 
-import 'driver_login_screen.dart';  
+import 'package:matracking/customer_side/passenger_auth_screen.dart'; 
+import 'package:matracking/drivers_side/driver_login_screen.dart';  
 
 class RoleSelectionScreen extends StatelessWidget {
   @override

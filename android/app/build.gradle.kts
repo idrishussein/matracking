@@ -1,14 +1,14 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")  // UPDATED FROM kotlin-android
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services") // Google Services Plugin
+    id("com.google.gms.google-services") // Ensure this is correctly applied
 }
 
 android {
     namespace = "com.example.matracking"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973" // Set the NDK version here
+    compileSdk = 35 // Update to the latest stable version if needed
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -17,15 +17,15 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "11"
     }
 
     defaultConfig {
         applicationId = "com.example.matracking"
-        minSdk = 23  // Updated from flutter.minSdkVersion to 23
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        minSdk = 23
+        targetSdk = 35// Update to the latest stable version if needed
+        versionCode = 1 // Ensure these are correctly set
+        versionName = "1.0.0"
     }
 
     buildTypes {
@@ -40,10 +40,9 @@ flutter {
 }
 
 dependencies {
-    // Import the Firebase BoM (Bill of Materials)
     implementation(platform("com.google.firebase:firebase-bom:33.11.0"))
 
-    // Add Firebase dependencies
+    // Firebase dependencies
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-auth")

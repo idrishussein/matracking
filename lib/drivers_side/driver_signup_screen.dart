@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DriverSignupScreen extends StatefulWidget {
   @override
@@ -8,10 +10,10 @@ class DriverSignupScreen extends StatefulWidget {
 
 class _DriverSignupScreenState extends State<DriverSignupScreen> {
   final _formKey = GlobalKey<FormState>();
-  String? _fullName, _email, _phoneNumber, _vehicleNumber;
+  String? _fullName, _email, _phoneNumber, _vehicleNumber, _password;
   bool _isLoading = false;
 
-  // Submit form function with basic validation and show loading indicator
+  // Submit form function with Firebase integration
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
@@ -19,18 +21,33 @@ class _DriverSignupScreenState extends State<DriverSignupScreen> {
         _isLoading = true; // Show loading spinner
       });
 
-      // Simulate a delay for form submission (this will be replaced by actual backend logic)
-      await Future.delayed(Duration(seconds: 2));
+      try {
+        // Create a user with Firebase Authentication
+        UserCredential userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+                email: _email!, password: _password!);
 
-      // After form submission
-      setState(() {
-        _isLoading = false; // Hide loading spinner
-      });
+        // Store additional details in Firestore
+        await FirebaseFirestore.instance.collection('drivers').doc(userCredential.user!.uid).set({
+          'fullName': _fullName,
+          'phoneNumber': _phoneNumber,
+          'vehicleNumber': _vehicleNumber,
+        });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Driver registered successfully!")),
-      );
-      Navigator.pop(context); // Go back to the main app
+        // Show success message and navigate back
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Driver registered successfully!")),
+        );
+        Navigator.pop(context); // Go back to the main app
+      } on FirebaseAuthException catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: ${e.message}")),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false; // Hide loading spinner
+        });
+      }
     }
   }
 
@@ -53,6 +70,7 @@ class _DriverSignupScreenState extends State<DriverSignupScreen> {
               _buildTextField("Email", (value) => _email = value),
               _buildPhoneNumberField(),
               _buildTextField("Vehicle Number", (value) => _vehicleNumber = value),
+              _buildTextField("Password", (value) => _password = value, isPassword: true),
               SizedBox(height: 20),
               _buildSubmitButton(),
             ],
@@ -78,7 +96,6 @@ class _DriverSignupScreenState extends State<DriverSignupScreen> {
         ),
         onSaved: (value) => _phoneNumber = value,
         validator: (value) {
-          // Simple phone number validation
           final pattern = r'^(?:\+254|0)[1-9]\d{8}$'; // Kenyan phone number format
           if (value == null || value.isEmpty) {
             return "Enter phone number";
@@ -92,11 +109,12 @@ class _DriverSignupScreenState extends State<DriverSignupScreen> {
   }
 
   // Reusable text field widget
-  Widget _buildTextField(String label, Function(String?) onSave) {
+  Widget _buildTextField(String label, Function(String?) onSave, {bool isPassword = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         style: GoogleFonts.poppins(color: Colors.white),
+        obscureText: isPassword,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.poppins(color: Colors.white),

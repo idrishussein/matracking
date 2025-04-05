@@ -1,77 +1,57 @@
-import 'package:firebase_database/firebase_database.dart';
-import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import 'package:geolocator/geolocator.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class LocationService {
-  static final DatabaseReference _dbRef =
-      FirebaseDatabase.instance.ref("buses_location");
-  static StreamSubscription<Position>? _positionStream;
+  static DatabaseReference? _busLocationRef;
+  static StreamSubscription<Position>? _locationSubscription;
 
-  // Check and request location permissions
+  // Initialize Firebase reference for a given bus ID
+  static void initialize(String busId) {
+    _busLocationRef = FirebaseDatabase.instance.ref("buses/$busId/location");
+  }
+
+  // Check for location permissions
   static Future<bool> checkPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
+    
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return false;
-      }
     }
-    return permission != LocationPermission.deniedForever;
+
+    return permission == LocationPermission.whileInUse || permission == LocationPermission.always;
   }
 
-  // Get the current location
-  static Future<Position?> getCurrentLocation() async {
-    bool hasPermission = await checkPermission();
-    if (!hasPermission) return null;
-
-    try {
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-    } catch (e) {
-      print("Error getting location: $e");
-      return null;
-    }
-  }
-
-  // Start tracking and sending location to Firebase under the selected bus
-  static void startLocationTracking(String busId) async {
-    bool hasPermission = await checkPermission();
-    if (!hasPermission) {
-      print("Location permission denied.");
-      return;
+  // Start tracking location and update Firebase; call onUpdate for UI updates.
+  static void startLocationTracking(String busId, Function(Position) onUpdate) async {
+    if (_busLocationRef == null) {
+      // Initialize bus location reference if not already done
+      initialize(busId);
     }
 
-    bool locationEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!locationEnabled) {
-      print("Location services are disabled. Please enable them.");
-      return;
-    }
+    // Ensure only one listener is active at a time
+    _locationSubscription?.cancel();
 
-    _positionStream?.cancel(); // Cancel previous stream if any
-
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+    _locationSubscription = Geolocator.getPositionStream(
+      locationSettings: LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Send updates every 10 meters
+        distanceFilter: 5, // Update every 5 meters
       ),
     ).listen((Position position) {
-      try {
-        _dbRef.child(busId).set({
-          "latitude": position.latitude,
-          "longitude": position.longitude,
-          "timestamp": DateTime.now().toIso8601String(),
+      if (_busLocationRef != null) {
+        _busLocationRef!.set({
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'timestamp': DateTime.now().toIso8601String(),
         });
-      } catch (e) {
-        print("Error updating location: $e");
       }
+      onUpdate(position);
     });
   }
 
   // Stop tracking location
   static void stopLocationTracking() {
-    _positionStream?.cancel();
-    _positionStream = null;
-    print("Location tracking stopped.");
+    _locationSubscription?.cancel();
+    _locationSubscription = null;
   }
 }

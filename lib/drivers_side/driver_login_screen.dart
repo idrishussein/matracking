@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'driver_dashboard_screen.dart';  
+import 'driver_dashboard_screen.dart'; 
 
 class DriverLoginScreen extends StatefulWidget {
   @override
@@ -16,25 +16,58 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
 
   // Function to handle login
   void _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
       _showError("Please fill in both email and password.");
       return;
     }
 
+    if (!_isValidEmail(email)) {
+      _showError("Please enter a valid email address.");
+      return;
+    }
+
     setState(() => _isLoading = true);
+    print("⏳ Attempting to log in...");
+
     try {
-      await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email, 
+        password: password,
       );
+      print("✅ Logged in as: ${userCredential.user?.email}");
+
+      // Navigate to the Driver Dashboard after successful login
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => DriverDashboardScreen()),
       );
+    } on FirebaseAuthException catch (e) {
+      print("❌ Firebase Auth Error: ${e.code}");
+
+      if (e.code == 'user-not-found') {
+        _showError("No account found with this email.");
+      } else if (e.code == 'wrong-password') {
+        _showError("Incorrect password. Try again.");
+      } else if (e.code == 'network-request-failed') {
+        _showError("Check your internet connection and try again.");
+      } else {
+        _showError("Login failed: ${e.message}");
+      }
     } catch (e) {
-      _showError(e.toString());
+      print("⚠️ Unexpected Error: $e");
+      _showError("An unexpected error occurred.");
     }
+
     setState(() => _isLoading = false);
+  }
+
+  // Email format validation
+  bool _isValidEmail(String email) {
+    return RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+        .hasMatch(email);
   }
 
   // Function to show error messages
@@ -65,9 +98,11 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
               style: GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             SizedBox(height: 30),
+
             // Email input field
             TextField(
               controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 labelText: "Email",
                 fillColor: Colors.white,
@@ -76,6 +111,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
               ),
             ),
             SizedBox(height: 10),
+
             // Password input field
             TextField(
               controller: _passwordController,
@@ -88,6 +124,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
               ),
             ),
             SizedBox(height: 20),
+
             // Login button or loading indicator
             _isLoading
                 ? CircularProgressIndicator()
